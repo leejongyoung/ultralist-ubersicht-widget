@@ -2,6 +2,8 @@
 
 > Display your [Ultralist](https://ultralist.io/) todos directly on your macOS desktop using [Übersicht](https://tracesof.net/uebersicht/).
 
+[View on Übersicht Widget Gallery](https://tracesof.net/uebersicht-widgets/#ultralist-ubersicht-widget)
+
 ![preview](Screenshots/IMAGE_001.png)
 
 ---
