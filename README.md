@@ -4,7 +4,7 @@
 
 [View on Übersicht Widget Gallery](https://tracesof.net/uebersicht-widgets/#ultralist-ubersicht-widget)
 
-![preview](Screenshots/IMAGE_001.png)
+![preview](Screenshot.png)
 
 ---
 
