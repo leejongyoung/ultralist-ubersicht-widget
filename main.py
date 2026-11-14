@@ -2,10 +2,11 @@
 
 import json
 import sys
-import getpass
+from pathlib import Path
+from html import escape
 from datetime import datetime, date
 
-path_to_todos  = "/Users/" + getpass.getuser() + "/.todos.json"
+path_to_todos = Path.home() / ".todos.json"
 
 # Display settings
 line_spacing   = "10px"
@@ -41,37 +42,60 @@ def render_due(due):
     return f'<span style="{style}">{format_date(due)}&nbsp;&nbsp;</span>'
 
 def render_subject(subject, projects, contexts, completed):
+    subject = escape(subject)
     for p in projects:
-        subject = subject.replace(f"+{p}", f'<span style="color:{color_project};">+{p}</span>')
+        token = escape(f"+{p}")
+        subject = subject.replace(token, f'<span style="color:{color_project};">{token}</span>')
     for c in contexts:
-        subject = subject.replace(f"@{c}", f'<span style="color:{color_context};">@{c}</span>')
+        token = escape(f"@{c}")
+        subject = subject.replace(token, f'<span style="color:{color_context};">{token}</span>')
     style = f"color:{color_subject};"
     if completed:
         style += "text-decoration:line-through;opacity:0.6;"
     return f'<span style="{style}">{subject}</span>'
 
-try:
-    with open(path_to_todos, "r", encoding="utf-8") as f:
-        data = json.load(f)
-except FileNotFoundError:
-    msg = f'<span style="color:{color_due_overdue};">ultralist: ~/.todos.json not found.<br>Run: ultralist init</span>'
-    sys.stdout.buffer.write(msg.encode("utf-8"))
-    sys.exit(0)
 
-rows = []
-for item in data:
-    if item['archived']:
-        continue
-    if item['completed'] and not show_completed:
-        continue
-    row = (
-        f'<div style="padding-top:{line_spacing};">'
-        + render_id(item['id'])
-        + render_due(item['due'])
-        + render_subject(item['subject'], item['projects'], item['contexts'], item['completed'])
-        + '</div>'
-    )
-    rows.append(row)
+def render_todos(data):
+    if not isinstance(data, list):
+        raise ValueError("Expected a todo array")
+    rows = []
+    for item in data:
+        if not isinstance(item, dict):
+            raise ValueError("Expected a todo object")
+        if not isinstance(item['subject'], str):
+            raise ValueError("Expected a subject string")
+        if not all(isinstance(item[field], list) and all(isinstance(v, str) for v in item[field])
+                   for field in ('projects', 'contexts')):
+            raise ValueError("Expected project/context arrays")
+        if item['archived']:
+            continue
+        if item['completed'] and not show_completed:
+            continue
+        row = (
+            f'<div style="padding-top:{line_spacing};">'
+            + render_id(item['id'])
+            + render_due(item['due'])
+            + render_subject(item['subject'], item['projects'], item['contexts'], item['completed'])
+            + '</div>'
+        )
+        rows.append(row)
+    return "<div>" + "".join(rows) + "</div>"
 
-out = "<div>" + "".join(rows) + "</div>"
-sys.stdout.buffer.write(out.encode("utf-8"))
+
+def build_output(path=None):
+    path = path_to_todos if path is None else Path(path)
+    try:
+        with path.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        return render_todos(data)
+    except FileNotFoundError:
+        message = "ultralist: ~/.todos.json not found.<br>Run: ultralist init"
+    except OSError:
+        message = "ultralist: Unable to read ~/.todos.json. Check file permissions."
+    except (ValueError, TypeError, KeyError, UnicodeError):
+        message = "ultralist: Invalid todo data. Check JSON, required fields and due dates."
+    return f'<span style="color:{color_due_overdue};">{message}</span>'
+
+
+if __name__ == "__main__":
+    sys.stdout.buffer.write(build_output().encode("utf-8"))
